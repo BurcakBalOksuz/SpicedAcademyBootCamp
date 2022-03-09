@@ -1,0 +1,41 @@
+version: '3'
+services:
+  tweet_collector:
+    build: tweet_collector/
+    volumes:
+    - ./tweet_collector/:/app
+    depends_on:
+    - mongodb
+    env_file:
+    - .env 
+
+
+  mongodb:
+    image: mongo
+    ports:
+    - 27017:27017
+
+  etl_job:                          # 4) run etl_job - container
+    build: etl_job/               # look for a Dockerfile here -> creates an image
+    volumes:
+    - ./etl_job/:/app/            # creating local dir "etl_job" into the "/app"-dir in this container
+    depends_on:
+    - mongodb                     # we need to have a DB first, from which we extract tweets
+    - postgresdb                  # we need to have a DB first, into which we load transformed tweets
+    
+  postgresdb:                       # 3) fire up MongoDB - container; # name : also the hostname
+    image: postgres               # image downloaded from Docker Hub
+    ports:
+    - 5555:5432                 # maps port 5432 of this container (RS) to port 5555 of localhost (LS)
+    environment:                  # sets environment variables
+    - POSTGRES_USER=postgres
+    - POSTGRES_PASSWORD=1234
+    - POSTGRES_DB=tweets
+    
+  slackbot:                         # finally, and the cherry on top: slackbot - container
+    build: slackbot/
+    volumes:
+    - ./slackbot/:/app/
+    depends_on:
+    - postgresdb
+
